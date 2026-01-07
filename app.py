@@ -1,66 +1,49 @@
 import streamlit as st
-import pandas as pd
 import pickle
+import numpy as np
+import pandas as pd
 
-# =======================
-# LOAD YOUR MODEL
-# =======================
-MODEL_PATH = "cross.pkl"
-
-st.title("Prediction App using cross.pkl Model")
-
+# ===========================
+# Load Model
+# ===========================
 @st.cache_resource
 def load_model():
-    with open(MODEL_PATH, "rb") as f:
+    with open("/mnt/data/crossv.pkl", "rb") as f:
         return pickle.load(f)
 
 model = load_model()
 
-# =======================
-# FEATURES USED BY MODEL
-# IMPORTANT: Must match the model exactly
-# =======================
+st.title("Prediction App using crossv.pkl")
+st.write("This app uses your uploaded model to make predictions.")
 
-# ❗❗ CHANGE THESE IF YOUR MODEL USED DIFFERENT FEATURES
-FEATURE_COLS = ['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare']
+# ===========================
+# Dynamic Input Based on Model
+# ===========================
 
-st.write("### Model expects these features:")
-st.write(FEATURE_COLS)
+# Try to detect required number of input features
+try:
+    n_features = model.n_features_in_
+except:
+    st.error("Model does not provide 'n_features_in_'. Please tell me your feature names.")
+    st.stop()
 
-# =======================
-# USER INPUT FORM
-# =======================
-st.write("## Enter Passenger Details")
+st.subheader("Enter Input Values")
 
-pclass = st.selectbox("Pclass", [1, 2, 3])
-sex = st.selectbox("Sex", ["male", "female"])
-age = st.number_input("Age", min_value=0, max_value=100, value=30)
-sibsp = st.number_input("SibSp", min_value=0, max_value=10, value=0)
-parch = st.number_input("Parch", min_value=0, max_value=10, value=0)
-fare = st.number_input("Fare", min_value=0.0, max_value=600.0, value=32.0)
+# Create number inputs dynamically
+inputs = []
+for i in range(n_features):
+    value = st.number_input(f"Feature {i+1}", value=0.0)
+    inputs.append(value)
 
-# Convert sex
-sex_value = 0 if sex == "male" else 1
+# Convert to numpy array
+input_array = np.array(inputs).reshape(1, -1)
 
-# Create DataFrame with EXACT model features
-input_df = pd.DataFrame([{
-    "Pclass": pclass,
-    "Sex": sex_value,
-    "Age": age,
-    "SibSp": sibsp,
-    "Parch": parch,
-    "Fare": fare
-}])
-
-st.write("### Input to Model:")
-st.dataframe(input_df)
-
-# =======================
-# PREDICTION
-# =======================
+# ===========================
+# Predict Button
+# ===========================
 if st.button("Predict"):
     try:
-        prediction = model.predict(input_df)[0]
-        st.success(f"Prediction: {prediction}")
+        prediction = model.predict(input_array)
+        st.success(f"Prediction: {prediction[0]}")
     except Exception as e:
         st.error(f"Error during prediction: {e}")
